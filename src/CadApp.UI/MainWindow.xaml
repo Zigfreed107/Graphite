@@ -1,0 +1,17 @@
+<Window x:Class="CadApp.UI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:helix="http://helix-toolkit.org/wpf/SharpDX"
+        Title="CadApp" Height="600" Width="900">
+
+    <Grid>
+        <helix:Viewport3DX
+            x:Name="Viewport"
+            ShowCoordinateSystem="True"
+            ShowViewCube="True"
+            CameraRotationMode="Trackball">
+
+        </helix:Viewport3DX>
+    </Grid>
+
+</Window>
