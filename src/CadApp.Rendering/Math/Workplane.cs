@@ -4,8 +4,16 @@ using HelixToolkit.Wpf.SharpDX;
 
 namespace CadApp.Rendering.Math;
 
-public static class Workplane
+public class Workplane
 {
+    public Vector3 Origin { get; set; } = Vector3.Zero;
+    public Vector3 Normal { get; set; } = Vector3.UnitZ;
+
+    public float DistanceToPoint(Vector3 point)
+    {
+        return Vector3.Dot(point - Origin, Normal);
+    }
+
     public static bool TryGetPointOnPlane(
         Viewport3DX viewport,
         double x,
@@ -32,5 +40,21 @@ public static class Workplane
         point = new Vector3(hit.X, hit.Y, hit.Z);
 
         return true;
+    }
+
+    public bool IntersectRay(Vector3 rayOrigin, Vector3 rayDirection, out Vector3 hit)
+    {
+        float denom = Vector3.Dot(Normal, rayDirection);
+
+        if (System.Math.Abs(denom) < 0.0001f)
+        {
+            hit = Vector3.Zero;
+            return false;
+        }
+
+        float t = Vector3.Dot(Origin - rayOrigin, Normal) / denom;
+
+        hit = rayOrigin + rayDirection * t;
+        return t >= 0;
     }
 }

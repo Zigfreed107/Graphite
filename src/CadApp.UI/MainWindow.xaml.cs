@@ -2,6 +2,7 @@ using CadApp.Core.Document;
 using CadApp.Core.Entities;
 using CadApp.Core.Selection;
 using CadApp.Core.Tools;
+using CadApp.Rendering.Math;
 using CadApp.Rendering.Scene;
 using CadApp.Rendering.Tools;
 using HelixToolkit.SharpDX;
@@ -18,13 +19,18 @@ public partial class MainWindow : Window
     private readonly CadDocument _document;
     private readonly SceneManager _scene;
     private readonly ToolManager _tools = new();
-
     private readonly SelectionManager _selection = new();
+    private ProjectionService _projection;
+    private LineTool _lineTool;
 
-
+    public IEffectsManager EffectsManager { get; }
     public MainWindow()
     {
         InitializeComponent();
+
+        this.DataContext = this;        //QUick Fix - should be using a ViewModel
+
+        EffectsManager = new DefaultEffectsManager();
 
         var builder = new LineBuilder();
         builder.AddLine(new Vector3(0, 0, 0), new Vector3(10, 0, 0));
@@ -45,21 +51,9 @@ public partial class MainWindow : Window
         _document = new CadDocument();
 
         _scene = new SceneManager(Viewport, _document);
-        //_tools.SetTool(new SelectTool(Viewport, _scene, _selection));
-        _tools.SetTool(new LineTool(Viewport, _document));
-
-        // Test entity
-        _document.Entities.Add(new LineEntity
-        {
-            Start = new Vector3(0, 0, 0),
-            End = new Vector3(5, 5, 0)
-        });
-
-        _document.Entities.Add(new LineEntity
-        {
-            Start = new Vector3(0, 0, 0),
-            End = new Vector3(0, 5, 5)
-        });
+        
+        _projection = new ProjectionService(Viewport);
+        _lineTool = new LineTool(_document, _projection, _scene);
 
         _selection.SelectionChanged += entity =>
         {
@@ -72,14 +66,12 @@ public partial class MainWindow : Window
 
     private void Viewport_MouseDown(object sender, MouseButtonEventArgs e)
     {
-        var pos = e.GetPosition(Viewport);
-        _tools.ActiveTool?.OnMouseDown(pos.X, pos.Y);
+        _lineTool.OnMouseDown(e, Viewport);
     }
 
     private void Viewport_MouseMove(object sender, MouseEventArgs e)
     {
-        var pos = e.GetPosition(Viewport);
-        _tools.ActiveTool?.OnMouseMove(pos.X, pos.Y);
+        _lineTool.OnMouseMove(e, Viewport);
     }
 
     private void Viewport_MouseUp(object sender, MouseButtonEventArgs e)

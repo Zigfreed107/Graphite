@@ -4,6 +4,7 @@ using CadApp.Core.Tools;
 using CadApp.Rendering.Scene;
 using HelixToolkit.Wpf.SharpDX;
 using System.Windows;
+using System.Windows.Input;
 
 namespace CadApp.Rendering.Tools;
 
@@ -41,4 +42,14 @@ public class SelectTool : ITool
     public void OnMouseMove(double x, double y) { }
 
     public void OnMouseUp(double x, double y) { }
+
+    void ITool.OnMouseDown(MouseButtonEventArgs e, Viewport3DX viewport)
+    {
+        throw new System.NotImplementedException();
+    }
+
+    void ITool.OnMouseMove(MouseEventArgs e, Viewport3DX viewport)
+    {
+        throw new System.NotImplementedException();
+    }
 }

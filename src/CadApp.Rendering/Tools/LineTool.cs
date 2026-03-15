@@ -1,98 +1,64 @@
 using CadApp.Core.Document;
 using CadApp.Core.Entities;
-using CadApp.Core.Tools;
 using CadApp.Rendering.Math;
-using HelixToolkit.SharpDX;
-using HelixToolkit.SharpDX.Core;
+using CadApp.Rendering.Scene;
 using HelixToolkit.Wpf.SharpDX;
 using SharpDX;
 using System.Numerics;
-using System.Windows.Media;
+using System.Windows.Input;
 
 namespace CadApp.Rendering.Tools;
 
 public class LineTool : ITool
 {
-    private readonly Viewport3DX _viewport;
     private readonly CadDocument _document;
+    private readonly ProjectionService _projection;
+    private readonly SceneManager _scene;
 
-    private bool _isDrawing;
-    private Vector3 _startPoint;
+    private Vector3? _startPoint;
 
-    private LineGeometryModel3D? _previewLine;
-
-    public LineTool(Viewport3DX viewport, CadDocument document)
+    public LineTool(CadDocument document,
+                    ProjectionService projection,
+                    SceneManager scene)
     {
-        _viewport = viewport;
         _document = document;
+        _projection = projection;
+        _scene = scene;
     }
 
-    public void OnMouseDown(double x, double y)
+    public void OnMouseDown(MouseButtonEventArgs e, Viewport3DX viewport)
     {
-        if (!TryGetWorldPoint(x, y, out var point))
+        var pos = e.GetPosition(viewport);
+
+        if (!_projection.TryGetWorldPoint(pos, out var world))
             return;
 
-        if (!_isDrawing)
+        if (_startPoint == null)
         {
-            _startPoint = point;
-            _isDrawing = true;
-
-            _previewLine = CreateLineModel(_startPoint, point, Color.FromRgb(255,0,0));
-            _viewport.Items.Add(_previewLine);
+            _startPoint = world;
         }
         else
         {
-            var line = new LineEntity
-            {
-                Start = _startPoint,
-                End = point
-            };
+            var line = new LineEntity(_startPoint.Value, world);
 
             _document.Entities.Add(line);
 
-            if (_previewLine != null)
-                _viewport.Items.Remove(_previewLine);
+            _scene.ClearPreview();
 
-            _previewLine = null;
-            _isDrawing = false;
+            _startPoint = null;
         }
     }
 
-    public void OnMouseMove(double x, double y)
+    public void OnMouseMove(MouseEventArgs e, Viewport3DX viewport)
     {
-        if (!_isDrawing || _previewLine == null)
+        if (_startPoint == null)
             return;
 
-        if (!TryGetWorldPoint(x, y, out var point))
+        var pos = e.GetPosition(viewport);
+
+        if (!_projection.TryGetWorldPoint(pos, out var world))
             return;
 
-        _previewLine.Geometry = CreateLineGeometry(_startPoint, point);
-    }
-
-    public void OnMouseUp(double x, double y) { }
-
-    private bool TryGetWorldPoint(double x, double y, out Vector3 point)
-    {
-        return Workplane.TryGetPointOnPlane(_viewport, x, y, out point);
-    }
-
-    private static LineGeometryModel3D CreateLineModel(Vector3 start, Vector3 end, Color color)
-    {
-        return new LineGeometryModel3D
-        {
-            Color = color,
-            Thickness = 2,
-            Geometry = CreateLineGeometry(start, end)
-        };
-    }
-
-    private static LineGeometry3D CreateLineGeometry(Vector3 start, Vector3 end)
-    {
-        var builder = new LineBuilder();
-        builder.AddLine(
-            new Vector3(start.X, start.Y, start.Z),
-            new Vector3(end.X, end.Y, end.Z));
-
-        return builder.ToLineGeometry3D();
+        _scene.ShowPreviewLine(_startPoint.Value, world);
     }
 }
