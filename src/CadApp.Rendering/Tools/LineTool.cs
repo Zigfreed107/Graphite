@@ -1,11 +1,17 @@
 using CadApp.Core.Document;
 using CadApp.Core.Entities;
+using CadApp.Core.Snapping;
+using CadApp.Core.Spatial;
 using CadApp.Rendering.Math;
 using CadApp.Rendering.Scene;
-using CadApp.Rendering.Snapping;
+using HelixToolkit.Geometry;
+using HelixToolkit.SharpDX;
 using HelixToolkit.Wpf.SharpDX;
 using SharpDX;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Numerics;
+using System.Windows;
 using System.Windows.Input;
 
 namespace CadApp.Rendering.Tools;
@@ -16,6 +22,9 @@ public class LineTool : ITool
     private readonly ProjectionService _projection;
     private readonly SceneManager _scene;
     private readonly SnapManager _snapManager;
+    private Vector3 _currentPoint;
+    private bool _hasSnap;
+    private SnapResult _snapResult;
 
     private Vector3? _startPoint;
 
@@ -28,27 +37,39 @@ public class LineTool : ITool
         _projection = projection;
         _scene = scene;
         _snapManager = snapManager;
+
+        var builder = new MeshBuilder();
+        builder.AddSphere(Vector3.Zero, 0.05f);
+
     }
 
     public void OnMouseDown(MouseButtonEventArgs e, Viewport3DX viewport)
     {
         var pos = e.GetPosition(viewport);
 
-        if (!_projection.TryGetWorldPoint(pos, out var world))
+        if (!_projection.TryGetWorldPoint(pos, out var worldPos))
             return;
 
-        if (_snapManager.TrySnap(world, 0.5f, out var snap))
+        // SNAP
+        if (_snapManager.TryGetSnap(worldPos, out var snap))
         {
-            world = snap.Position;
+            _currentPoint = snap.Position;
+            _snapResult = snap;
+            _hasSnap = true;
+        }
+        else
+        {
+            _currentPoint = worldPos;
+            _hasSnap = false;
         }
 
         if (_startPoint == null)
         {
-            _startPoint = world;
+            _startPoint = _currentPoint;
         }
         else
         {
-            _document.Entities.Add(new LineEntity(_startPoint.Value, world));
+            _document.Entities.Add(new LineEntity(_startPoint.Value, _currentPoint));
             _scene.ClearPreview();
             _startPoint = null;
         }
@@ -61,15 +82,35 @@ public class LineTool : ITool
 
         var pos = e.GetPosition(viewport);
 
-        if (!_projection.TryGetWorldPoint(pos, out var world))
+        if (!_projection.TryGetWorldPoint(pos, out var worldPos))
             return;
 
         // SNAP
-        if (_snapManager.TrySnap(world, 0.5f, out var snap))
+        if (_snapManager.TryGetSnap(worldPos, out var snap))
         {
-            world = snap.Position;
+            _currentPoint = snap.Position;
+            _hasSnap = true;
+
+        }
+        else
+        {
+            _currentPoint = worldPos;
+            _hasSnap = false;
         }
 
-        _scene.ShowPreviewLine(_startPoint.Value, world);
+        if (_hasSnap)
+        {
+            _scene.ShowSnappingPoint(_currentPoint);
+        }
+        else
+        {
+            _scene.HideSnappingPoint();
+        }
+
+        _scene.ShowPreviewLine(_startPoint.Value, _currentPoint);
+        
+
+
     }
+
 }

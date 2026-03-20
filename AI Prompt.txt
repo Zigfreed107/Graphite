@@ -11,6 +11,7 @@ WHEN YOU RESPOND:
 3. Explain why this approach is used in real CAD systems
 4. Mention common mistakes or pitfalls
 5. Suggest next steps
+6. Any code you suggest should have the file it is to be added to, and the location in the file (like "add this method to MainWindow.xaml.cs") clearly mentioned.
 
 CONTEXT:
 - My repo can be found at https://github.com/Zigfreed107/Graphite.

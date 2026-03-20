@@ -1,12 +1,14 @@
 using CadApp.Core.Document;
 using CadApp.Core.Entities;
 using CadApp.Core.Selection;
-using CadApp.Core.Tools;
 using CadApp.Core.Snapping;
 using CadApp.Core.Spatial;
+using CadApp.Core.Tools;
 using CadApp.Rendering.Math;
 using CadApp.Rendering.Scene;
 using CadApp.Rendering.Tools;
+using HelixToolkit.Geometry;
+using HelixToolkit.Maths;
 using HelixToolkit.SharpDX;
 using HelixToolkit.Wpf.SharpDX;
 using System.Numerics;
@@ -24,7 +26,6 @@ public partial class MainWindow : Window
     private readonly SelectionManager _selection = new();
     private ProjectionService _projection;
     private LineTool _lineTool;
-    private SpatialGrid _spatialGrid;
     private SnapManager _snapManager;
     
     public IEffectsManager EffectsManager { get; }
@@ -46,15 +47,13 @@ public partial class MainWindow : Window
             Thickness = 2
         };
 
-        Viewport.Items.Add(line);
-
+        Viewport.Items.Add(line);// temporary
 
         _document = new CadDocument();
 
         _scene = new SceneManager(Viewport, _document);
 
-        _spatialGrid = new SpatialGrid(cellSize: 1.0f);
-        _snapManager = new SnapManager(_spatialGrid);
+        _snapManager = new SnapManager(_document.SpatialGrid);
 
         _projection = new ProjectionService(Viewport);
         _lineTool = new LineTool(_document, _projection, _scene, _snapManager);
