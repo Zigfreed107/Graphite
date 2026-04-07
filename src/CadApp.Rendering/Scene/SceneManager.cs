@@ -17,9 +17,6 @@ using SharpDX;
 
 namespace CadApp.Rendering.Scene;
 
-TODO the way the preview line is redrawn and has to be deleted from previewRoot by name, so as not to delete the snap marker, is a bit hacky. Consider a better way to manage preview elements, maybe by keeping references to them instead of searching by name. Also consider using a single reusable preview line visual instead of creating/removing each time for better performance.
-
-
 public class SceneManager
 {
     private readonly Viewport3DX _viewport;

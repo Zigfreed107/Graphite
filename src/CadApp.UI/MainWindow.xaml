@@ -13,13 +13,15 @@
                 ShowCameraInfo="True" ShowFrameDetails="True" 
                 ShowFrameRate="True" ZoomAroundMouseDownPoint="True" 
                 IsViewCubeEdgeClicksEnabled="True" 
-                BackgroundColor="White" 
-                MouseDown="Viewport_MouseDown" MouseMove="Viewport_MouseMove">
+                BackgroundColor="White"
+                ModelUpDirection="0,0,1"
+                MouseDown="Viewport_MouseDown" 
+                MouseMove="Viewport_MouseMove">
 
             <hx:Viewport3DX.Camera>
                 <hx:OrthographicCamera Position="10,10,10"
                            LookDirection="-10,-10,-10"
-                           UpDirection="0,1,0"/>
+                           UpDirection="0,0,1"/>
             </hx:Viewport3DX.Camera>
 
             <hx:DirectionalLight3D Direction="-1,-1,-1"/>
