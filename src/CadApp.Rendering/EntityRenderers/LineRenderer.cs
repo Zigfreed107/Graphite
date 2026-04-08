@@ -1,8 +1,10 @@
 using CadApp.Core.Entities;
+using HelixToolkit;
 using HelixToolkit.SharpDX;
 using HelixToolkit.SharpDX.Core;
 using HelixToolkit.Wpf.SharpDX;
 using SharpDX;
+using SharpDX.Direct2D1;
 using System.Numerics;
 using System.Windows.Media;
 
@@ -21,7 +23,12 @@ public static class LineRenderer
         {
             Geometry = builder.ToLineGeometry3D(),
             Color = Color.FromRgb(0, 0, 255),
-            Thickness = 2
+            Thickness = 1,
+            Smoothness = 1,
+            DepthBias=-100,
+            SlopeScaledDepthBias = -1.0f,
+
         };
+
     }
 }
