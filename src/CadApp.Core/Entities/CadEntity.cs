@@ -5,7 +5,7 @@ using System.Numerics;
 
 namespace CadApp.Core.Entities;
 
-public abstract class CadEntity
+public abstract class CadEntity: ISelectable
 {
     public Guid Id { get; } = Guid.NewGuid();
     public abstract (Vector3 Min, Vector3 Max) GetBounds();

@@ -1,22 +1,14 @@
 using CadApp.Core.Document;
 using CadApp.Core.Entities;
-using CadApp.Core.Spatial;
+using CadApp.Rendering.BackgroundGrid;
 using CadApp.Rendering.EntityRenderers;
 using CadApp.Rendering.Preview;
-using CadApp.Rendering.BackgroundGrid;
-using HelixToolkit;
-using HelixToolkit.Geometry;
 using HelixToolkit.Maths;
-using HelixToolkit.SharpDX;
 using HelixToolkit.Wpf.SharpDX;
-using SharpDX;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Numerics;
-using System.Windows;
-using System.Windows.Media;
-using System.Windows.Media.Media3D;
 
 namespace CadApp.Rendering.Scene;
 
@@ -25,12 +17,26 @@ public class SceneManager
     private readonly Viewport3DX _viewport;
     private readonly CadDocument _document;
     private readonly Dictionary<Element3D, CadEntity> _visualToEntity = new();
+    private readonly Dictionary<CadEntity, Element3D> _entityToVisual = new();
+
     private readonly GroupModel3D _entityRoot = new();  //Permanent CAD geometry
     private readonly GroupModel3D _backgroundGridRoot = new();
     private readonly GroupModel3D _previewRoot = new(); //Preview Geometry
     private readonly BackgroundGridRenderer _BackgroundGridRenderer;
     private readonly SnapMarkerRenderer _snapMarkerRenderer;
     private PreviewLineRenderer _previewLineRenderer;
+    private readonly SelectionManager _selectionManager = new SelectionManager();
+
+    // Materials used for highlighting, selection, etc.
+    private readonly PhongMaterial _defaultMaterial = new PhongMaterial
+    {
+        DiffuseColor = new Color4(0.7f, 0.7f, 0.7f, 1.0f)
+    };
+
+    private readonly PhongMaterial _highlightMaterial = new PhongMaterial
+    {
+        DiffuseColor = new Color4(1.0f, 1.0f, 0.0f, 1.0f)
+    };
 
     /// <summary>
     /// Manages the 3D scene for the CAD application.
@@ -44,6 +50,11 @@ public class SceneManager
     /// - Avoids recreating scene objects during interaction
     /// - Uses incremental updates for performance
     /// </summary>
+    /// 
+    public SelectionManager SelectionManager
+    {
+        get { return _selectionManager; }
+    }
     public SceneManager(Viewport3DX viewport, CadDocument document)
     {
         _viewport = viewport;
@@ -61,7 +72,8 @@ public class SceneManager
         _snapMarkerRenderer = new SnapMarkerRenderer(_previewRoot);
         _viewport.Items.Add(_previewRoot);
 
-
+        //Selection
+        _selectionManager.SelectionChanged += OnSelectionChanged;
 
 
 
@@ -89,19 +101,47 @@ public class SceneManager
         }
     }
 
+    // Updated to match SelectionManager.SelectionChanged: Action<IEnumerable<Guid>, IEnumerable<Guid>>
+    private void OnSelectionChanged(IEnumerable<Guid> addedIds, IEnumerable<Guid> removedIds)
+    {
+        // Reset visuals for removed entity ids
+        foreach (var id in removedIds)
+        {
+            var entity = FindEntityById(id);
+            if (entity != null && _entityToVisual.TryGetValue(entity, out var visual))
+            {
+                ApplyDefaultMaterial(visual);
+            }
+        }
+
+        // Apply highlight for newly added entity ids
+        foreach (var id in addedIds)
+        {
+            var entity = FindEntityById(id);
+            if (entity != null && _entityToVisual.TryGetValue(entity, out var visual))
+            {
+                ApplyHighlightMaterial(visual);
+            }
+        }
+    }
+
     private void RenderAll()
     {
         _entityRoot.Children.Clear();
-        _visualToEntity.Clear();
+        
+        _entityToVisual.Clear();
 
-        foreach (var entity in _document.Entities)
+        foreach (CadEntity entity in _document.Entities)
         {
-            var visual = CreateVisual(entity);
+            Element3D? visual = CreateVisual(entity);
 
             if (visual != null)
             {
                 _entityRoot.Children.Add(visual);
                 _visualToEntity[visual] = entity;
+                _entityToVisual[entity] = visual;
+
+                ApplyDefaultMaterial(visual);
             }
         }
     }
@@ -114,6 +154,21 @@ public class SceneManager
         return null;
     }
 
+    /// <summary>
+    /// Finds entity by Id.
+    /// TODO: This is O(n) now — will optimize later.
+    /// </summary>
+    private CadEntity? FindEntityById(Guid id)
+    {
+        foreach (CadEntity entity in _document.Entities)
+        {
+            if (entity.Id == id)
+                return entity;
+        }
+
+        return null;
+    }
+
     private Element3D? CreateVisual(CadEntity entity)
     {
         if (entity is LineEntity line)
@@ -121,7 +176,6 @@ public class SceneManager
 
         return null;
     }
-
 
     /// <summary>
     /// Updates the preview line positions without recreating the visual.
@@ -164,7 +218,9 @@ public class SceneManager
         if (visual != null)
         {
             _entityRoot.Children.Add(visual);
+            _entityToVisual[entity] = visual;
             _visualToEntity[visual] = entity;
+            ApplyDefaultMaterial(visual);
         }
 
         if (entity is LineEntity line)
@@ -189,12 +245,35 @@ public class SceneManager
         if (visualToRemove != null)
         {
             _entityRoot.Children.Remove(visualToRemove);
+            _entityToVisual.Remove(entity);
             _visualToEntity.Remove(visualToRemove);
         }
 
         if (entity is LineEntity line)
         {
             _document.SpatialGrid.Remove(line);
+        }
+    }
+
+    /// <summary>
+    /// Applies default material to a visual.
+    /// </summary>
+    private void ApplyDefaultMaterial(Element3D visual)
+    {
+        if (visual is MeshGeometryModel3D mesh)
+        {
+            mesh.Material = _defaultMaterial;
+        }
+    }
+
+    /// <summary>
+    /// Applies highlight material to a visual.
+    /// </summary>
+    private void ApplyHighlightMaterial(Element3D visual)
+    {
+        if (visual is MeshGeometryModel3D mesh)
+        {
+            mesh.Material = _highlightMaterial;
         }
     }
 }

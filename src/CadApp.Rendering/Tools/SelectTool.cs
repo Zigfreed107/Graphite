@@ -1,5 +1,4 @@
 using CadApp.Core.Entities;
-using CadApp.Core.Selection;
 using CadApp.Core.Tools;
 using CadApp.Rendering.Scene;
 using HelixToolkit.Wpf.SharpDX;
@@ -31,11 +30,11 @@ public class SelectTool : ITool
         if (hits.Count > 0)
         {
             CadEntity entity = _scene.GetEntityFromVisual((Element3D)hits[0].ModelHit);
-            _selection.Select(entity);
+            _selection.SelectSingle(entity);
         }
         else
         {
-            _selection.Clear();
+            _selection.ClearSelection();
         }
     }
 

@@ -1,10 +1,15 @@
 using CadApp.Core.Entities;
 using CadApp.Core.Snapping;
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 
-public class LineEntity : CadEntity, ISnapProvider
+/// <summary>
+/// Represents a straight line entity defined by a start and end point in 3D space. Contains core CAD logic, but not rendering.
+/// </summary>
+public class LineEntity : CadEntity, ISnapProvider, ISelectable
 {
+    public Guid Id { get; private set; } = Guid.NewGuid();
     public Vector3 Start { get; }
     public Vector3 End { get; }
 

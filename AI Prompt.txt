@@ -1,3 +1,7 @@
+TASK:
+I would like to implement a selection mode for my CAD application. They should be able to select entities and the entities should be highlighted when selected. I also want to implement a way to deselect entities.
+
+BACKGROUND:
 You are helping me build a CAD application in C# using WPF and Helix Toolkit Sharp Dx.
 
 GOALS:

@@ -1,20 +1,15 @@
 using CadApp.Core.Document;
-using CadApp.Core.Entities;
-using CadApp.Core.Selection;
 using CadApp.Core.Snapping;
-using CadApp.Core.Spatial;
 using CadApp.Core.Tools;
 using CadApp.Rendering.Math;
 using CadApp.Rendering.Scene;
 using CadApp.Rendering.Tools;
-using HelixToolkit.Geometry;
-using HelixToolkit.Maths;
 using HelixToolkit.SharpDX;
 using HelixToolkit.Wpf.SharpDX;
-using System.Numerics;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Media;
+using HitTestResult = HelixToolkit.SharpDX.HitTestResult;
 
 namespace CadApp.UI;
 
@@ -29,6 +24,7 @@ public partial class MainWindow : Window
     private SnapManager _snapManager;
     
     public DefaultEffectsManager EffectsManager { get; }
+    private readonly Dictionary<object, ISelectable> _modelToEntityMap = new Dictionary<object, ISelectable>();
     public MainWindow()
     {
         InitializeComponent();
@@ -46,19 +42,45 @@ public partial class MainWindow : Window
 
         _projection = new ProjectionService(Viewport);
         _lineTool = new LineTool(_document, _projection, _scene, _snapManager);
+    }
 
-        _selection.SelectionChanged += entity =>
+    public ISelectable? GetEntityFromModel(object model)
+    {
+        if (_modelToEntityMap.TryGetValue(model, out ISelectable entity))
         {
-            if (entity != null)
-                Title = $"Selected: {entity.Id}";
-            else
-                Title = "CadApp";
-        };
+            return entity;
+        }
+
+        return null;
     }
 
     private void Viewport_MouseDown(object sender, MouseButtonEventArgs e)
     {
         _lineTool.OnMouseDown(e, Viewport);
+
+        //TODO: Filter out entities that shouldnt be selected like preview lines, grids, etc. Possibly detect if object is Iselectable
+        // Perform hit test using Helix
+        var hits = this.Viewport.FindHits(e.GetPosition(this.Viewport));
+
+        if (hits.Count > 0) { HitTestResult result = hits[0];
+
+            if (result != null && result.ModelHit != null)
+            {
+                ISelectable? entity = _scene.GetEntityFromVisual((Element3D)result.ModelHit); 
+
+                if (entity != null)
+                {
+                    this._scene.SelectionManager.SelectSingle(entity);
+                }
+            }
+        else
+        {
+            // Clicked empty space → deselect
+            this._scene.SelectionManager.ClearSelection();
+        }
+        }
+
+
     }
 
     private void Viewport_MouseMove(object sender, MouseEventArgs e)

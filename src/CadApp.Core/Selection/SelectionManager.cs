@@ -1,23 +1,72 @@
-﻿using CadApp.Core.Entities;
-using System;
+﻿using System;
+using System.Collections.Generic;
 
-namespace CadApp.Core.Selection;
-
+/// <summary>
+/// Manages selection state for all selectable entities.
+/// This class is part of the domain layer and contains no rendering logic.
+/// </summary>
 public class SelectionManager
 {
+    /// <summary>
+    /// Currently selected entities.
+    /// </summary>
+    private readonly HashSet<Guid> _selectedEntityIds = new HashSet<Guid>();
 
-    public CadEntity? SelectedEntity { get; private set; }
+    /// <summary>
+    /// Fired when selection changes.
+    /// Provides delta changes for efficient rendering updates.
+    /// </summary>
+    public event Action<IEnumerable<Guid>, IEnumerable<Guid>>? SelectionChanged;
 
-    public event Action<CadEntity?>? SelectionChanged;
-
-    public void Select(CadEntity? entity)
+    /// <summary>
+    /// Select a single entity (clears previous selection).
+    /// </summary>
+    public void SelectSingle(ISelectable entity)
     {
-        SelectedEntity = entity;
-        SelectionChanged?.Invoke(entity);
+        List<Guid> removed = new List<Guid>(_selectedEntityIds);
+        List<Guid> added = new List<Guid>();
+
+        _selectedEntityIds.Clear();
+
+        if (!_selectedEntityIds.Contains(entity.Id))
+        {
+            _selectedEntityIds.Add(entity.Id);
+            added.Add(entity.Id);
+        }
+
+        SelectionChanged?.Invoke(added, removed);
     }
 
-    public void Clear()
+    /// <summary>
+    /// Add entity to selection (for multi-select later).
+    /// </summary>
+    public void AddToSelection(ISelectable entity)
     {
-        Select(null);
+        _selectedEntityIds.Add(entity.Id);
+
+        SelectionChanged?.Invoke(_selectedEntityIds, new List<Guid>());
+    }
+
+    /// <summary>
+    /// Deselect all entities.
+    /// </summary>
+    public void ClearSelection()
+    {
+        if (_selectedEntityIds.Count == 0)
+            return;
+
+        List<Guid> removed = new List<Guid>(_selectedEntityIds);
+
+        _selectedEntityIds.Clear();
+
+        SelectionChanged?.Invoke(new List<Guid>(), removed);
+    }
+
+    /// <summary>
+    /// Check if an entity is selected.
+    /// </summary>
+    public bool IsSelected(Guid entityId)
+    {
+        return _selectedEntityIds.Contains(entityId);
     }
 }
