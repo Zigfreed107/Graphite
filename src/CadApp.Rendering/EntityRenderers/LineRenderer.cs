@@ -27,8 +27,6 @@ public static class LineRenderer
             Smoothness = 1,
             DepthBias=-100,
             SlopeScaledDepthBias = -1.0f,
-
         };
-
     }
 }

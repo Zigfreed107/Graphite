@@ -160,7 +160,7 @@ public class SceneManager
     {
         foreach (CadEntity entity in _document.Entities)
         {
-            if (entity.CadEntityId == id)
+            if (entity.Id == id)
                 return entity;
         }
 

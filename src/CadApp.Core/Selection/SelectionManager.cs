@@ -22,17 +22,17 @@ public class SelectionManager
     /// <summary>
     /// Select a single entity (clears previous selection).
     /// </summary>
-    public void SelectSingle(CadEntity entity)
+    public void SelectSingle(ISelectable entity)
     {
         List<Guid> removed = new List<Guid>(_selectedEntityIds);
         List<Guid> added = new List<Guid>();
 
         _selectedEntityIds.Clear();
 
-        if (!_selectedEntityIds.Contains(entity.CadEntityId))
+        if (!_selectedEntityIds.Contains(entity.Id))
         {
-            _selectedEntityIds.Add(entity.CadEntityId);
-            added.Add(entity.CadEntityId);
+            _selectedEntityIds.Add(entity.Id);
+            added.Add(entity.Id);
         }
 
         SelectionChanged?.Invoke(added, removed);
@@ -43,7 +43,7 @@ public class SelectionManager
     /// </summary>
     public void AddToSelection(CadEntity entity)
     {
-        _selectedEntityIds.Add(entity.CadEntityId);
+        _selectedEntityIds.Add(entity.Id);
 
         SelectionChanged?.Invoke(_selectedEntityIds, new List<Guid>());
     }
