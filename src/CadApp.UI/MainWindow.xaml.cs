@@ -6,6 +6,7 @@ using CadApp.Rendering.Scene;
 using CadApp.Rendering.Tools;
 using HelixToolkit.SharpDX;
 using HelixToolkit.Wpf.SharpDX;
+using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Input;
@@ -25,6 +26,7 @@ public partial class MainWindow : Window
     
     public DefaultEffectsManager EffectsManager { get; }
     private readonly Dictionary<object, ISelectable> _modelToEntityMap = new Dictionary<object, ISelectable>();
+
     public MainWindow()
     {
         InitializeComponent();
@@ -62,7 +64,9 @@ public partial class MainWindow : Window
         // Perform hit test using Helix
         var hits = this.Viewport.FindHits(e.GetPosition(this.Viewport));
 
-        if (hits.Count > 0) { HitTestResult result = hits[0];
+        if (hits.Count > 0) 
+        { 
+            HitTestResult result = hits[0];
 
             if (result != null && result.ModelHit != null)
             {
@@ -73,14 +77,12 @@ public partial class MainWindow : Window
                     this._scene.SelectionManager.SelectSingle(entity);
                 }
             }
-        else
-        {
-            // Clicked empty space → deselect
-            this._scene.SelectionManager.ClearSelection();
+            else
+            {
+                // Clicked empty space → deselect
+                this._scene.SelectionManager.ClearSelection();
+            }
         }
-        }
-
-
     }
 
     private void Viewport_MouseMove(object sender, MouseEventArgs e)

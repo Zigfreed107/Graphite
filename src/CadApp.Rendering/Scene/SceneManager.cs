@@ -107,7 +107,7 @@ public class SceneManager
         // Reset visuals for removed entity ids
         foreach (var id in removedIds)
         {
-            var entity = FindEntityById(id);
+            CadEntity? entity = FindEntityById(id);
             if (entity != null && _entityToVisual.TryGetValue(entity, out var visual))
             {
                 ApplyDefaultMaterial(visual);
@@ -140,8 +140,6 @@ public class SceneManager
                 _entityRoot.Children.Add(visual);
                 _visualToEntity[visual] = entity;
                 _entityToVisual[entity] = visual;
-
-                ApplyDefaultMaterial(visual);
             }
         }
     }
@@ -162,7 +160,7 @@ public class SceneManager
     {
         foreach (CadEntity entity in _document.Entities)
         {
-            if (entity.Id == id)
+            if (entity.CadEntityId == id)
                 return entity;
         }
 
@@ -211,6 +209,10 @@ public class SceneManager
         _snapMarkerRenderer.HideSnappingPoint();
     }
 
+    /// <summary>
+    /// Adds a new entity into the scene
+    /// </summary>
+    /// <param name="entity"></param>
     private void InsertEntity(CadEntity entity)
     {
         Element3D? visual = CreateVisual(entity);
@@ -229,6 +231,10 @@ public class SceneManager
         }
     }
 
+    /// <summary>
+    /// Removes and entity from the scene.
+    /// </summary>
+    /// <param name="entity"></param>
     private void RemoveEntity(CadEntity entity)
     {
         Element3D? visualToRemove = null;

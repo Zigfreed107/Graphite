@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CadApp.Core.Entities;
+using System;
 using System.Collections.Generic;
 
 /// <summary>
@@ -21,17 +22,17 @@ public class SelectionManager
     /// <summary>
     /// Select a single entity (clears previous selection).
     /// </summary>
-    public void SelectSingle(ISelectable entity)
+    public void SelectSingle(CadEntity entity)
     {
         List<Guid> removed = new List<Guid>(_selectedEntityIds);
         List<Guid> added = new List<Guid>();
 
         _selectedEntityIds.Clear();
 
-        if (!_selectedEntityIds.Contains(entity.Id))
+        if (!_selectedEntityIds.Contains(entity.CadEntityId))
         {
-            _selectedEntityIds.Add(entity.Id);
-            added.Add(entity.Id);
+            _selectedEntityIds.Add(entity.CadEntityId);
+            added.Add(entity.CadEntityId);
         }
 
         SelectionChanged?.Invoke(added, removed);
@@ -40,9 +41,9 @@ public class SelectionManager
     /// <summary>
     /// Add entity to selection (for multi-select later).
     /// </summary>
-    public void AddToSelection(ISelectable entity)
+    public void AddToSelection(CadEntity entity)
     {
-        _selectedEntityIds.Add(entity.Id);
+        _selectedEntityIds.Add(entity.CadEntityId);
 
         SelectionChanged?.Invoke(_selectedEntityIds, new List<Guid>());
     }

@@ -1,5 +1,5 @@
 TASK:
-I would like to implement a selection mode for my CAD application. They should be able to select entities and the entities should be highlighted when selected. I also want to implement a way to deselect entities.
+You have helped me implement a selection tool in my CAD application, you can find the selectionManager at "src\CadApp.Core\Selection\SelectionManager.cs". I would like to have the lines have a thicker yellow highlight around them, perhaps by drawing a thicker yellow line underneath the original.
 
 BACKGROUND:
 You are helping me build a CAD application in C# using WPF and Helix Toolkit Sharp Dx.
