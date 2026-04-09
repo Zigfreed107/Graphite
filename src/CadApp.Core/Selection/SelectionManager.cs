@@ -2,6 +2,7 @@
 // Domain-level selection state service used by tools and consumed by rendering via events.
 using System;
 using System.Collections.Generic;
+using CadApp.Core.Entities;
 
 /// <summary>
 /// Manages selection state for all selectable entities.

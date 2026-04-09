@@ -10,6 +10,7 @@ using HelixToolkit.Wpf.SharpDX;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Linq;
 using System.Numerics;
 
 namespace CadApp.Rendering.Scene;
@@ -18,8 +19,15 @@ public class SceneManager
 {
     private readonly Viewport3DX _viewport;
     private readonly CadDocument _document;
-    private readonly Dictionary<Element3D, CadEntity> _visualToEntity = new Dictionary<Element3D, CadEntity>();
-    private readonly Dictionary<CadEntity, Element3D> _entityToVisual = new Dictionary<CadEntity, Element3D>();
+
+    // Mapping Dictionaries.
+    // visual to entity dicts maintain the relationship between CAD entities and their visual representation in the viewer.
+    // visuals are stored as GroupModel3D to allow for composite visuals made of multiple entities (e.g. line + selection overlay).
+    private readonly Dictionary<GroupModel3D, CadEntity> _visualToEntity = new Dictionary<GroupModel3D, CadEntity>();
+    private readonly Dictionary<CadEntity, GroupModel3D> _entityToVisual = new Dictionary<CadEntity, GroupModel3D>();
+    // element to visual dict allows us to find the parent visual for any given element in the scene. E.g. a line on the screen is an element,
+    // but might be part of a larger visual that includes selection overlays, etc. This allows us to find the correct visual to update when an element is interacted with.
+    private readonly Dictionary<Element3D, GroupModel3D> _elementToVisual = new Dictionary<Element3D, GroupModel3D>();
 
     private readonly GroupModel3D _entityRoot = new GroupModel3D();  //Permanent CAD geometry
     private readonly GroupModel3D _backgroundGridRoot = new GroupModel3D();
@@ -110,7 +118,7 @@ public class SceneManager
         foreach (Guid id in removedIds)
         {
             CadEntity? entity = FindEntityById(id);
-            Element3D? visual;
+            GroupModel3D? visual;
             if (entity != null && _entityToVisual.TryGetValue(entity, out visual))
             {
                 ApplyDefaultMaterial(visual);
@@ -121,7 +129,7 @@ public class SceneManager
         foreach (Guid id in addedIds)
         {
             CadEntity? entity = FindEntityById(id);
-            Element3D? visual;
+            GroupModel3D? visual;
             if (entity != null && _entityToVisual.TryGetValue(entity, out visual))
             {
                 ApplyHighlightMaterial(visual);
@@ -137,24 +145,40 @@ public class SceneManager
 
         foreach (CadEntity entity in _document.Entities)
         {
-            Element3D? visual = CreateVisual(entity);
+            GroupModel3D? visual = CreateVisual(entity);
 
             if (visual != null)
             {
-                _entityRoot.Children.Add(visual);
-                _visualToEntity[visual] = entity;
                 _entityToVisual[entity] = visual;
+                _visualToEntity[visual] = entity;
+
+                foreach (Element3D element in visual.Children)
+                {
+                    _entityRoot.Children.Add(visual);
+                    _visualToEntity[visual] = entity;
+                    _entityToVisual[entity] = visual;
+                }
             }
         }
     }
 
-    public CadEntity? GetEntityFromVisual(Element3D visual)
+    /// <summary>
+    /// Finds the visual from a particular element in the scene.
+    /// </summary>
+    /// <param name="element"></param>
+    /// <returns></returns>
+    public CadEntity? GetEntityFromVisual(Element3D element)
     {
-        CadEntity? entity;
-        if (_visualToEntity.TryGetValue(visual, out entity))
-            return entity;
+        GroupModel3D? visual = null;
+        CadEntity? entity = null;
 
-        return null;
+        if (_elementToVisual.TryGetValue(element, out visual))
+        {
+            _visualToEntity.TryGetValue(visual, out entity);
+        }
+
+        return entity;
+
     }
 
     /// <summary>
@@ -172,7 +196,7 @@ public class SceneManager
         return null;
     }
 
-    private Element3D? CreateVisual(CadEntity entity)
+    private GroupModel3D? CreateVisual(CadEntity entity)
     {
         if (entity is LineEntity line)
             return LineRenderer.Create(line);
@@ -220,16 +244,27 @@ public class SceneManager
     /// <param name="entity"></param>
     private void InsertEntity(CadEntity entity)
     {
-        Element3D? visual = CreateVisual(entity);
+
+        // Update visual to entity mapping
+        GroupModel3D? visual = CreateVisual(entity);
+
 
         if (visual != null)
         {
+
+            foreach (Element3D element in visual.Children)
+            {
+                _elementToVisual.Add(element, visual);
+            }
+
             _entityRoot.Children.Add(visual);
             _entityToVisual[entity] = visual;
             _visualToEntity[visual] = entity;
             ApplyDefaultMaterial(visual);
+
         }
 
+        // Add to spatial grid.
         if (entity is LineEntity line)
         {
             _document.SpatialGrid.Insert(line);
@@ -242,24 +277,17 @@ public class SceneManager
     /// <param name="entity"></param>
     private void RemoveEntity(CadEntity entity)
     {
-        Element3D? visualToRemove = null;
+        // Update visual to entity mapping
+        GroupModel3D? visualToRemove = null;
 
-        foreach (KeyValuePair<Element3D, CadEntity> pair in _visualToEntity)
-        {
-            if (pair.Value == entity)
-            {
-                visualToRemove = pair.Key;
-                break;
-            }
-        }
-
-        if (visualToRemove != null)
+        if (_entityToVisual.TryGetValue(entity, out visualToRemove))
         {
             _entityRoot.Children.Remove(visualToRemove);
             _entityToVisual.Remove(entity);
             _visualToEntity.Remove(visualToRemove);
         }
 
+        // Remove from spatial grid.
         if (entity is LineEntity line)
         {
             _document.SpatialGrid.Remove(line);
@@ -271,15 +299,11 @@ public class SceneManager
     /// </summary>
     private void ApplyDefaultMaterial(Element3D visual)
     {
+        if (visual == null) return;
+
         if (visual is GroupModel3D group)
         {
-            foreach (Element3D child in group.Children)
-            {
-                if (LineRenderer.IsSelectionOverlay(child))
-                {
-                    child.Visibility = System.Windows.Visibility.Hidden;
-                }
-            }
+            LineRenderer.GetGetSelectionOverlay(group).Visibility = System.Windows.Visibility.Hidden;
 
             return;
         }
@@ -295,15 +319,11 @@ public class SceneManager
     /// </summary>
     private void ApplyHighlightMaterial(Element3D visual)
     {
+        if (visual == null) return;
+
         if (visual is GroupModel3D group)
         {
-            foreach (Element3D child in group.Children)
-            {
-                if (LineRenderer.IsSelectionOverlay(child))
-                {
-                    child.Visibility = System.Windows.Visibility.Visible;
-                }
-            }
+            LineRenderer.GetGetSelectionOverlay(group).Visibility = System.Windows.Visibility.Visible;
 
             return;
         }

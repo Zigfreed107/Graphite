@@ -45,10 +45,22 @@ public static class LineRenderer
             Color = Color.FromRgb(255, 215, 0),
             Thickness = 4.0,
             Smoothness = 1,
-            DepthBias = -120,
+            DepthBias = 1000,
             SlopeScaledDepthBias = -1.5f,
             Visibility = Visibility.Hidden
         };
 
+        return
+
+            new GroupModel3D()
+            {
+                Children = { baseLine, selectionOverlay }
+            };
+
+    }
+
+    public static Element3D? GetGetSelectionOverlay(GroupModel3D Line)
+    {
+        return Line.Children[1];
     }
 }
