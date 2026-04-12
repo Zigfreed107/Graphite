@@ -2,7 +2,7 @@
 
 public interface ITool
 {
-    void OnMouseDown(double x, double y);
-    void OnMouseMove(double x, double y);
-    void OnMouseUp(double x, double y);
+    void OnMouseDown(System.Numerics.Vector2 screenPosition);
+    void OnMouseMove(System.Numerics.Vector2 screenPosition);
+    void OnMouseUp(System.Numerics.Vector2 screenPosition);
 }

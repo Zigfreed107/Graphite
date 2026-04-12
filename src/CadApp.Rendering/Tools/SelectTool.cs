@@ -2,12 +2,12 @@ using CadApp.Core.Entities;
 using CadApp.Core.Tools;
 using CadApp.Rendering.Scene;
 using HelixToolkit.Wpf.SharpDX;
+using System.Numerics;
 using System.Windows;
-using System.Windows.Input;
 
 namespace CadApp.Rendering.Tools;
 
-public class SelectTool : ITool
+public class SelectTool : CadApp.Core.Tools.ITool
 {
     private readonly Viewport3DX _viewport;
     private readonly SceneManager _scene;
@@ -23,9 +23,9 @@ public class SelectTool : ITool
         _selection = selection;
     }
 
-    public void OnMouseDown(double x, double y)
+    public void OnMouseDown(Vector2 screenPosition)
     {
-        var hits = _viewport.FindHits(new Point(x, y));
+        var hits = _viewport.FindHits(new Point(screenPosition.X, screenPosition.Y));
 
         if (hits.Count > 0)
         {
@@ -38,17 +38,7 @@ public class SelectTool : ITool
         }
     }
 
-    public void OnMouseMove(double x, double y) { }
+    public void OnMouseMove(Vector2 screenPosition) { }
 
-    public void OnMouseUp(double x, double y) { }
-
-    void ITool.OnMouseDown(MouseButtonEventArgs e, Viewport3DX viewport)
-    {
-        throw new System.NotImplementedException();
-    }
-
-    void ITool.OnMouseMove(MouseEventArgs e, Viewport3DX viewport)
-    {
-        throw new System.NotImplementedException();
-    }
+    public void OnMouseUp(Vector2 screenPosition) { }
 }

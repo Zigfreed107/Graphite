@@ -2,6 +2,7 @@ using CadApp.Core.Document;
 using CadApp.Core.Entities;
 using CadApp.Core.Snapping;
 using CadApp.Core.Spatial;
+using CadApp.Core.Tools;
 using CadApp.Rendering.Math;
 using CadApp.Rendering.Scene;
 using HelixToolkit.Geometry;
@@ -12,11 +13,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
 using System.Windows;
-using System.Windows.Input;
 
 namespace CadApp.Rendering.Tools;
 
-public class LineTool : ITool
+public class LineTool : CadApp.Core.Tools.ITool
 {
     private readonly CadDocument _document;
     private readonly ProjectionService _projection;
@@ -40,11 +40,9 @@ public class LineTool : ITool
 
     }
 
-    public void OnMouseDown(MouseButtonEventArgs e, Viewport3DX viewport)
+    public void OnMouseDown(Vector2 screenPosition)
     {
-        var pos = e.GetPosition(viewport);
-
-        if (!_projection.TryGetWorldPoint(pos, out var worldPos))
+        if (!_projection.TryGetWorldPoint(screenPosition, out var worldPos))
             return;
 
         // SNAP
@@ -73,13 +71,9 @@ public class LineTool : ITool
         }
     }
 
-    public void OnMouseMove(MouseEventArgs e, Viewport3DX viewport)
+    public void OnMouseMove(Vector2 screenPosition)
     {
-
-
-        var pos = e.GetPosition(viewport);
-
-        if (!_projection.TryGetWorldPoint(pos, out var worldPos))
+        if (!_projection.TryGetWorldPoint(screenPosition, out var worldPos))
             return;
 
         // SNAP
@@ -109,6 +103,10 @@ public class LineTool : ITool
 
         _scene.ShowPreviewLine(_startPoint.Value, _currentPoint);
         
+    }
+
+    public void OnMouseUp(Vector2 screenPosition)
+    {
     }
 
 }

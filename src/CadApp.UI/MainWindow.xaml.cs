@@ -11,6 +11,7 @@ using HelixToolkit.SharpDX;
 using HelixToolkit.Wpf.SharpDX;
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Windows;
 using System.Windows.Input;
 using HitTestResult = HelixToolkit.SharpDX.HitTestResult;
@@ -65,9 +66,12 @@ public partial class MainWindow : Window
     /// </summary>
     private void Viewport_MouseDown(object sender, MouseButtonEventArgs e)
     {
-        _lineTool.OnMouseDown(e, Viewport);
+        Point mousePosition = e.GetPosition(Viewport);
+        Vector2 screenPosition = new Vector2((float)mousePosition.X, (float)mousePosition.Y);
 
-        IList<HitTestResult> hits = Viewport.FindHits(e.GetPosition(Viewport));
+        _lineTool.OnMouseDown(screenPosition);
+
+        IList<HitTestResult> hits = Viewport.FindHits(mousePosition);
 
         if (hits.Count == 0)
         {
@@ -99,7 +103,10 @@ public partial class MainWindow : Window
     /// </summary>
     private void Viewport_MouseMove(object sender, MouseEventArgs e)
     {
-        _lineTool.OnMouseMove(e, Viewport);
+        Point mousePosition = e.GetPosition(Viewport);
+        Vector2 screenPosition = new Vector2((float)mousePosition.X, (float)mousePosition.Y);
+
+        _lineTool.OnMouseMove(screenPosition);
     }
 
     /// <summary>
