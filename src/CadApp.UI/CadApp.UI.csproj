@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\CadApp.Commands\CadApp.Commands.csproj" />
     <ProjectReference Include="..\CadApp.ViewModels\CadApp.ViewModels.csproj" />
     <ProjectReference Include="..\CadApp.Rendering\CadApp.Rendering.csproj" />
   </ItemGroup>

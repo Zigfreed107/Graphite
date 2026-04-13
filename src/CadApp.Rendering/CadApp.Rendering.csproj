@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\CadApp.Commands\CadApp.Commands.csproj" />
     <ProjectReference Include="..\CadApp.Core\CadApp.Core.csproj" />
   </ItemGroup>
 

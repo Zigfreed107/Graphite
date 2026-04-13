@@ -95,7 +95,7 @@ public class SceneManager
 
 
 
-        _document.Entities.CollectionChanged += OnEntitiesChanged;
+        _document.EntitiesChanged += OnEntitiesChanged;
 
         RenderAll();
     }
@@ -275,12 +275,6 @@ public class SceneManager
             ApplyDefaultMaterial(visual);
 
         }
-
-        // Add to spatial grid.
-        if (entity is LineEntity line)
-        {
-            _document.SpatialGrid.Insert(line);
-        }
     }
 
     /// <summary>
@@ -302,12 +296,6 @@ public class SceneManager
             _entityRoot.Children.Remove(visualToRemove);
             _entityToVisual.Remove(entity);
             _visualToEntity.Remove(visualToRemove);
-        }
-
-        // Remove from spatial grid.
-        if (entity is LineEntity line)
-        {
-            _document.SpatialGrid.Remove(line);
         }
     }
 

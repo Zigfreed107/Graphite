@@ -1,10 +1,12 @@
 // CadDocument.cs
 // Owns the current CAD entity collection and document-level mutation helpers used by tools, rendering, and file workflows.
 using CadApp.Core.Entities;
+using CadApp.Core.Snapping;
 using CadApp.Core.Spatial;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 
 namespace CadApp.Core.Document;
 
@@ -14,7 +16,13 @@ namespace CadApp.Core.Document;
 public class CadDocument
 {
     //TODO Spatial grid size is a const value. Make it specified in a config file somewhere?
-    public ObservableCollection<CadEntity> Entities { get; } = new();
+    private readonly ObservableCollection<CadEntity> _entities = new ObservableCollection<CadEntity>();
+
+    public IReadOnlyList<CadEntity> Entities
+    {
+        get { return _entities; }
+    }
+
     public SpatialGrid SpatialGrid { get; }
 
     public CadDocument()
@@ -23,13 +31,57 @@ public class CadDocument
     }
 
     /// <summary>
+    /// Raised when document entities change so observers can synchronize render state without mutating the collection.
+    /// </summary>
+    public event NotifyCollectionChangedEventHandler? EntitiesChanged
+    {
+        add { _entities.CollectionChanged += value; }
+        remove { _entities.CollectionChanged -= value; }
+    }
+
+    /// <summary>
+    /// Adds one entity to the document and updates document-owned acceleration structures.
+    /// </summary>
+    public void AddEntity(CadEntity entity)
+    {
+        if (entity == null)
+        {
+            throw new ArgumentNullException(nameof(entity));
+        }
+
+        AddEntityToSpatialIndex(entity);
+        _entities.Add(entity);
+    }
+
+    /// <summary>
+    /// Removes one entity from the document and updates document-owned acceleration structures.
+    /// </summary>
+    public bool RemoveEntity(CadEntity entity)
+    {
+        if (entity == null)
+        {
+            throw new ArgumentNullException(nameof(entity));
+        }
+
+        if (!_entities.Contains(entity))
+        {
+            return false;
+        }
+
+        RemoveEntityFromSpatialIndex(entity);
+        _entities.Remove(entity);
+
+        return true;
+    }
+
+    /// <summary>
     /// Removes all entities while preserving per-entity collection notifications for renderers.
     /// </summary>
     public void ClearEntities()
     {
-        for (int i = Entities.Count - 1; i >= 0; i--)
+        for (int i = _entities.Count - 1; i >= 0; i--)
         {
-            Entities.RemoveAt(i);
+            RemoveEntity(_entities[i]);
         }
     }
 
@@ -49,7 +101,29 @@ public class CadDocument
 
         foreach (CadEntity entity in replacementEntities)
         {
-            Entities.Add(entity);
+            AddEntity(entity);
+        }
+    }
+
+    /// <summary>
+    /// Adds entities that provide snap points to the document-owned spatial index.
+    /// </summary>
+    private void AddEntityToSpatialIndex(CadEntity entity)
+    {
+        if (entity is ISnapProvider)
+        {
+            SpatialGrid.Insert(entity);
+        }
+    }
+
+    /// <summary>
+    /// Removes entities that provide snap points from the document-owned spatial index.
+    /// </summary>
+    private void RemoveEntityFromSpatialIndex(CadEntity entity)
+    {
+        if (entity is ISnapProvider)
+        {
+            SpatialGrid.Remove(entity);
         }
     }
 }

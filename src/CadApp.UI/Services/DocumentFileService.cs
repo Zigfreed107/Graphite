@@ -24,6 +24,7 @@ public sealed class DocumentFileService
     private readonly SelectionManager _selectionManager;
     private readonly GphDocumentSerializer _serializer;
     private readonly Action _cancelTransientToolState;
+    private readonly Action _clearCommandHistory;
     private readonly Action _activateSelectionTool;
 
     /// <summary>
@@ -35,6 +36,7 @@ public sealed class DocumentFileService
         SelectionManager selectionManager,
         GphDocumentSerializer serializer,
         Action cancelTransientToolState,
+        Action clearCommandHistory,
         Action activateSelectionTool)
     {
         _owner = owner ?? throw new ArgumentNullException(nameof(owner));
@@ -42,6 +44,7 @@ public sealed class DocumentFileService
         _selectionManager = selectionManager ?? throw new ArgumentNullException(nameof(selectionManager));
         _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
         _cancelTransientToolState = cancelTransientToolState ?? throw new ArgumentNullException(nameof(cancelTransientToolState));
+        _clearCommandHistory = clearCommandHistory ?? throw new ArgumentNullException(nameof(clearCommandHistory));
         _activateSelectionTool = activateSelectionTool ?? throw new ArgumentNullException(nameof(activateSelectionTool));
     }
 
@@ -217,6 +220,7 @@ public sealed class DocumentFileService
         _cancelTransientToolState();
         _selectionManager.ClearSelection();
         _document.ReplaceEntities(loadedEntities);
+        _clearCommandHistory();
         _activateSelectionTool();
     }
 }

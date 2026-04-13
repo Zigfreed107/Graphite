@@ -1,6 +1,7 @@
 // MainWindow.xaml.cs
 // Composes the WPF workspace shell with CAD document, scene, interaction, and lightweight dock-region behavior.
 using CadApp.Core.Document;
+using CadApp.Commands;
 using CadApp.Core.Entities;
 using CadApp.Core.Import;
 using CadApp.Core.Persistence;
@@ -37,6 +38,7 @@ public partial class MainWindow : Window
     private readonly SnapManager _snapManager;
     private readonly SelectionWindowOverlayController _selectionWindowOverlay;
     private readonly DocumentFileService _documentFileService;
+    private readonly CadCommandRunner _commandRunner;
     private string _activeToolStatusText = "Select tool active";
 
     public DefaultEffectsManager EffectsManager { get; }
@@ -60,8 +62,9 @@ public partial class MainWindow : Window
         _snapManager = new SnapManager(_document.SpatialGrid);
         _projection = new ProjectionService(Viewport);
         _toolManager = new ToolManager();
+        _commandRunner = new CadCommandRunner();
         _selectTool = new SelectTool(Viewport, _document, _scene, _scene.SelectionManager);
-        _lineTool = new LineTool(_document, _projection, _scene, _snapManager);
+        _lineTool = new LineTool(_document, _projection, _scene, _snapManager, _commandRunner);
         _stlImporter = new StlImporter();
         _documentFileService = new DocumentFileService(
             this,
@@ -69,6 +72,7 @@ public partial class MainWindow : Window
             _scene.SelectionManager,
             new GphDocumentSerializer(),
             CancelTransientToolState,
+            _commandRunner.ClearHistory,
             ActivateSelectToolForDocumentCommand);
 
         WireWorkspaceState();
@@ -196,7 +200,7 @@ public partial class MainWindow : Window
         try
         {
             CadEntity importedEntity = _stlImporter.Import(dialog.FileName);
-            _document.Entities.Add(importedEntity);
+            _commandRunner.Execute(new AddEntityCommand(_document, importedEntity));
 
             string fileName = Path.GetFileName(dialog.FileName);
             _viewModel.SetStatusText($"Imported {fileName}");
