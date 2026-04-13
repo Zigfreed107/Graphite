@@ -148,8 +148,10 @@ public class SceneManager
     private void RenderAll()
     {
         _entityRoot.Children.Clear();
-        
+
         _entityToVisual.Clear();
+        _visualToEntity.Clear();
+        _elementToVisual.Clear();
 
         foreach (CadEntity entity in _document.Entities)
         {
@@ -159,12 +161,11 @@ public class SceneManager
             {
                 _entityToVisual[entity] = visual;
                 _visualToEntity[visual] = entity;
+                _entityRoot.Children.Add(visual);
 
                 foreach (Element3D element in visual.Children)
                 {
-                    _entityRoot.Children.Add(visual);
-                    _visualToEntity[visual] = entity;
-                    _entityToVisual[entity] = visual;
+                    _elementToVisual[element] = visual;
                 }
             }
         }
@@ -293,6 +294,11 @@ public class SceneManager
 
         if (_entityToVisual.TryGetValue(entity, out visualToRemove))
         {
+            foreach (Element3D element in visualToRemove.Children)
+            {
+                _elementToVisual.Remove(element);
+            }
+
             _entityRoot.Children.Remove(visualToRemove);
             _entityToVisual.Remove(entity);
             _visualToEntity.Remove(visualToRemove);

@@ -1,0 +1,4 @@
+interface:
+  display_name: "CAD Code Review"
+  short_description: "Review CAD architecture, performance, and tool risks."
+  default_prompt: "Use $cad-code-review to review this CAD code for correctness, architecture, real-time performance, maintainability, and CAD interaction pitfalls. Lead with actionable findings and file/line references."

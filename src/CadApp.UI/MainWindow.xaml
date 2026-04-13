@@ -34,11 +34,31 @@
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="#FF2D2D30" />
         </Style>
+
+        <SolidColorBrush x:Key="SelectionWindowStrokeBrush" Color="#FF007ACC" />
+        <SolidColorBrush x:Key="SelectionWindowFillBrush" Color="#22007ACC" />
+        <DoubleCollection x:Key="SelectionWindowSolidDashArray" />
+        <DoubleCollection x:Key="SelectionWindowDottedDashArray">8,4</DoubleCollection>
+
+        <Style x:Key="SelectionWindowOverlayStyle" TargetType="Rectangle">
+            <Setter Property="Fill" Value="{StaticResource SelectionWindowFillBrush}" />
+            <Setter Property="Stroke" Value="{StaticResource SelectionWindowStrokeBrush}" />
+            <Setter Property="StrokeThickness" Value="1" />
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+        </Style>
     </Window.Resources>
 
     <DockPanel LastChildFill="True" Background="#FFF3F3F3">
         <Menu DockPanel.Dock="Top" Background="#FFF5F5F5">
-            <MenuItem Header="_File" />
+            <MenuItem Header="_File">
+                <MenuItem Header="_New"
+                          Click="NewProjectMenuItem_Click" />
+                <MenuItem Header="_Open..."
+                          Click="OpenProjectMenuItem_Click" />
+                <MenuItem Header="_Save..."
+                          Click="SaveProjectMenuItem_Click" />
+            </MenuItem>
             <MenuItem Header="_Edit" />
             <MenuItem Header="_View" />
             <MenuItem Header="_Tools" />
@@ -99,35 +119,44 @@
                         <TextBlock Style="{StaticResource PaneHeaderTextStyle}" Text="{Binding ViewerTitle}" />
                     </Border>
 
-                    <hx:Viewport3DX x:Name="Viewport"
-                                    Background="White"
-                                    BackgroundColor="White"
-                                    EffectsManager="{Binding ElementName=RootWindow, Path=EffectsManager}"
-                                    IsViewCubeEdgeClicksEnabled="True"
-                                    ModelUpDirection="0,0,1"
-                                    MouseDown="Viewport_MouseDown"
-                                    MouseMove="Viewport_MouseMove"
-                                    MouseUp="Viewport_MouseUp"
-                                    Orthographic="True"
-                                    RotateAroundMouseDownPoint="True"
-                                    ShowCoordinateSystem="True"
-                                    ShowFrameDetails="True"
-                                    ShowFrameRate="True"
-                                    ShowViewCube="True"
-                                    ZoomAroundMouseDownPoint="True"
-                                    MSAA="Maximum" ShowTriangleCountInfo="True" ShowCameraInfo="True">
+                    <Grid>
+                        <hx:Viewport3DX x:Name="Viewport"
+                                        Background="White"
+                                        BackgroundColor="White"
+                                        EffectsManager="{Binding ElementName=RootWindow, Path=EffectsManager}"
+                                        IsViewCubeEdgeClicksEnabled="True"
+                                        ModelUpDirection="0,0,1"
+                                        MouseDown="Viewport_MouseDown"
+                                        MouseMove="Viewport_MouseMove"
+                                        MouseUp="Viewport_MouseUp"
+                                        Orthographic="True"
+                                        RotateAroundMouseDownPoint="True"
+                                        ShowCoordinateSystem="True"
+                                        ShowFrameDetails="True"
+                                        ShowFrameRate="True"
+                                        ShowViewCube="True"
+                                        ZoomAroundMouseDownPoint="True"
+                                        MSAA="Maximum" ShowTriangleCountInfo="True" ShowCameraInfo="True">
 
-                        <hx:Viewport3DX.Camera>
-                            <hx:OrthographicCamera Position="10,10,10"
-                                                   LookDirection="-10,-10,-10"
-                                                   UpDirection="0,0,1" 
-                                                   FarPlaneDistance="10000"
-                                                   NearPlaneDistance="0.1"
+                            <hx:Viewport3DX.Camera>
+                                <hx:OrthographicCamera Position="10,10,10"
+                                                       LookDirection="-10,-10,-10"
+                                                       UpDirection="0,0,1" 
+                                                       FarPlaneDistance="10000"
+                                                       NearPlaneDistance="0.1"
  />
-                        </hx:Viewport3DX.Camera>
+                            </hx:Viewport3DX.Camera>
 
-                        <hx:DirectionalLight3D Direction="-1,-1,-1" />
-                    </hx:Viewport3DX>
+                            <hx:DirectionalLight3D Direction="-1,-1,-1" />
+                        </hx:Viewport3DX>
+
+                        <Canvas x:Name="ViewportOverlayCanvas"
+                                ClipToBounds="True"
+                                IsHitTestVisible="False">
+                            <Rectangle x:Name="SelectionWindowOverlay"
+                                       Style="{StaticResource SelectionWindowOverlayStyle}" />
+                        </Canvas>
+                    </Grid>
                 </DockPanel>
             </Border>
 
@@ -144,9 +173,38 @@
                     <Border DockPanel.Dock="Top" Style="{StaticResource PaneHeaderStyle}">
                         <TextBlock Style="{StaticResource PaneHeaderTextStyle}" Text="{Binding PropertiesPanelTitle}" />
                     </Border>
-                    <TextBlock Margin="12"
-                               VerticalAlignment="Top"
-                               Text="{Binding PropertiesPanelText}" />
+                    <Grid Margin="12" VerticalAlignment="Top">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="12" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="8" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0"
+                                   Text="{Binding PropertiesPanelText}"
+                                   TextWrapping="Wrap" />
+
+                        <TextBlock Grid.Row="2"
+                                   FontWeight="SemiBold"
+                                   Text="{Binding SelectedEntityType}" />
+
+                        <Grid Grid.Row="4"
+                              IsEnabled="{Binding IsEntitySelected}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="80" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0"
+                                       Margin="0,3,8,0"
+                                       Text="Name" />
+                            <TextBox Grid.Column="1"
+                                     MinWidth="120"
+                                     Text="{Binding SelectedEntityName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </Grid>
+                    </Grid>
                 </DockPanel>
             </Border>
         </Grid>

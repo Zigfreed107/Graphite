@@ -1,3 +1,5 @@
+// StlImporter.cs
+// Converts STL files into MeshEntity document data while keeping file parsing out of UI and rendering layers.
 using CadApp.Core.Entities;
 using System;
 using System.Collections.Generic;
@@ -15,6 +17,9 @@ public class StlImporter : IModelImporter
     private const int BinaryHeaderLength = 80;
     private const int BinaryTriangleLength = 50;
 
+    /// <summary>
+    /// Imports an STL file into a mesh entity named after the source filename.
+    /// </summary>
     public CadEntity Import(string filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))
@@ -39,6 +44,9 @@ public class StlImporter : IModelImporter
         return mesh;
     }
 
+    /// <summary>
+    /// Detects binary STL files by checking whether the file length matches the binary triangle count.
+    /// </summary>
     private static bool IsBinaryStl(string filePath)
     {
         long length = new FileInfo(filePath).Length;
@@ -58,6 +66,9 @@ public class StlImporter : IModelImporter
         return expectedLength == length;
     }
 
+    /// <summary>
+    /// Reads a binary STL file into mesh buffers without retaining STL header metadata as the entity name.
+    /// </summary>
     private static MeshEntity ReadBinary(string filePath)
     {
         List<Vector3> vertices = new List<Vector3>();
@@ -67,8 +78,8 @@ public class StlImporter : IModelImporter
         using FileStream stream = File.OpenRead(filePath);
         using BinaryReader reader = new BinaryReader(stream);
 
-        byte[] header = reader.ReadBytes(BinaryHeaderLength);
-        string name = GetBinaryName(header, filePath);
+        stream.Position = BinaryHeaderLength;
+        string name = Path.GetFileNameWithoutExtension(filePath);
         uint triangleCount = reader.ReadUInt32();
 
         for (uint triangleIndex = 0; triangleIndex < triangleCount; triangleIndex++)
@@ -85,6 +96,9 @@ public class StlImporter : IModelImporter
         return new MeshEntity(name, vertices, indices, normals, filePath);
     }
 
+    /// <summary>
+    /// Reads an ASCII STL file into mesh buffers and keeps the filename as the entity name.
+    /// </summary>
     private static MeshEntity ReadAscii(string filePath)
     {
         List<Vector3> vertices = new List<Vector3>();
@@ -107,13 +121,6 @@ public class StlImporter : IModelImporter
 
             if (trimmed.StartsWith("solid ", StringComparison.OrdinalIgnoreCase))
             {
-                string solidName = trimmed.Substring("solid ".Length).Trim();
-
-                if (solidName.Length > 0)
-                {
-                    name = solidName;
-                }
-
                 continue;
             }
 
@@ -140,6 +147,9 @@ public class StlImporter : IModelImporter
         return new MeshEntity(name, vertices, indices, normals, filePath);
     }
 
+    /// <summary>
+    /// Appends one STL triangle to the mesh buffers and computes a fallback normal when required.
+    /// </summary>
     private static void AddTriangle(
         List<Vector3> vertices,
         List<int> indices,
@@ -171,11 +181,17 @@ public class StlImporter : IModelImporter
         normals.Add(normal);
     }
 
+    /// <summary>
+    /// Reads one little-endian STL vector from the binary stream.
+    /// </summary>
     private static Vector3 ReadVector(BinaryReader reader)
     {
         return new Vector3(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
     }
 
+    /// <summary>
+    /// Parses one ASCII STL vector using invariant-culture floating-point values.
+    /// </summary>
     private static Vector3 ParseVector(string value)
     {
         string[] parts = value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
@@ -189,11 +205,5 @@ public class StlImporter : IModelImporter
             float.Parse(parts[0], CultureInfo.InvariantCulture),
             float.Parse(parts[1], CultureInfo.InvariantCulture),
             float.Parse(parts[2], CultureInfo.InvariantCulture));
-    }
-
-    private static string GetBinaryName(byte[] header, string filePath)
-    {
-        string name = System.Text.Encoding.ASCII.GetString(header).Trim('\0', ' ', '\t', '\r', '\n');
-        return name.Length == 0 ? Path.GetFileNameWithoutExtension(filePath) : name;
     }
 }

@@ -1,5 +1,6 @@
 // MainViewModel.cs
 // Owns the WPF shell state for the main CAD workspace without taking dependencies on rendering services.
+using CadApp.Core.Entities;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace CadApp.ViewModels;
@@ -10,6 +11,11 @@ namespace CadApp.ViewModels;
 /// </summary>
 public partial class MainViewModel : ObservableObject
 {
+    private CadEntity? _selectedEntity;
+    private bool _isEntitySelected;
+    private string _selectedEntityType = "No selection";
+    private string _selectedEntityName = string.Empty;
+
     [ObservableProperty]
     private string _windowTitle = "CadApp";
 
@@ -32,6 +38,44 @@ public partial class MainViewModel : ObservableObject
     private string _statusText = "Ready";
 
     /// <summary>
+    /// Indicates whether the properties panel has an entity that can be edited.
+    /// </summary>
+    public bool IsEntitySelected
+    {
+        get { return _isEntitySelected; }
+        private set { SetProperty(ref _isEntitySelected, value); }
+    }
+
+    /// <summary>
+    /// Displays the selected entity kind in the properties panel.
+    /// </summary>
+    public string SelectedEntityType
+    {
+        get { return _selectedEntityType; }
+        private set { SetProperty(ref _selectedEntityType, value); }
+    }
+
+    /// <summary>
+    /// Gets or sets the selected entity name shown in the properties panel.
+    /// </summary>
+    public string SelectedEntityName
+    {
+        get { return _selectedEntityName; }
+        set
+        {
+            if (!SetProperty(ref _selectedEntityName, value))
+            {
+                return;
+            }
+
+            if (_selectedEntity != null)
+            {
+                _selectedEntity.Name = string.IsNullOrWhiteSpace(value) ? "Entity" : value.Trim();
+            }
+        }
+    }
+
+    /// <summary>
     /// Updates the short status message displayed in the status bar.
     /// </summary>
     public void SetStatusText(string statusText)
@@ -45,5 +89,29 @@ public partial class MainViewModel : ObservableObject
     public void SetToolPanelText(string toolPanelText)
     {
         ToolPanelText = toolPanelText;
+    }
+
+    /// <summary>
+    /// Sets the entity currently displayed by the properties panel.
+    /// </summary>
+    public void SetSelectedEntity(CadEntity? selectedEntity)
+    {
+        _selectedEntity = selectedEntity;
+        IsEntitySelected = selectedEntity != null;
+        SelectedEntityType = selectedEntity == null ? "No selection" : selectedEntity.GetType().Name;
+        SelectedEntityName = selectedEntity == null ? string.Empty : selectedEntity.Name;
+        PropertiesPanelText = selectedEntity == null ? "Select an entity to edit its properties." : "Entity properties";
+    }
+
+    /// <summary>
+    /// Sets the properties panel to a read-only summary for multi-selection.
+    /// </summary>
+    public void SetMultipleSelection(int selectedEntityCount)
+    {
+        _selectedEntity = null;
+        IsEntitySelected = false;
+        SelectedEntityType = $"{selectedEntityCount} entities selected";
+        SelectedEntityName = string.Empty;
+        PropertiesPanelText = "Multiple selection. Select one entity to edit its properties.";
     }
 }

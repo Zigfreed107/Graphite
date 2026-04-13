@@ -3,11 +3,13 @@
 using CadApp.Core.Document;
 using CadApp.Core.Entities;
 using CadApp.Core.Import;
+using CadApp.Core.Persistence;
 using CadApp.Core.Snapping;
 using CadApp.Core.Tools;
 using CadApp.Rendering.Math;
 using CadApp.Rendering.Scene;
 using CadApp.Rendering.Tools;
+using CadApp.UI.Services;
 using CadApp.ViewModels;
 using HelixToolkit.SharpDX;
 using HelixToolkit.Wpf.SharpDX;
@@ -18,6 +20,7 @@ using System.IO;
 using System.Numerics;
 using System.Windows;
 using System.Windows.Input;
+using SelectionWindowOverlayController = CadApp.UI.Overlays.SelectionWindowOverlay;
 
 namespace CadApp.UI;
 
@@ -32,8 +35,9 @@ public partial class MainWindow : Window
     private readonly LineTool _lineTool;
     private readonly IModelImporter _stlImporter;
     private readonly SnapManager _snapManager;
+    private readonly SelectionWindowOverlayController _selectionWindowOverlay;
+    private readonly DocumentFileService _documentFileService;
     private string _activeToolStatusText = "Select tool active";
-    private int _selectedEntityCount;
 
     public DefaultEffectsManager EffectsManager { get; }
 
@@ -43,6 +47,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        _selectionWindowOverlay = new SelectionWindowOverlayController(this, SelectionWindowOverlay);
 
         _viewModel = new MainViewModel();
         DataContext = _viewModel;
@@ -55,11 +60,19 @@ public partial class MainWindow : Window
         _snapManager = new SnapManager(_document.SpatialGrid);
         _projection = new ProjectionService(Viewport);
         _toolManager = new ToolManager();
-        _selectTool = new SelectTool(Viewport, _scene, _scene.SelectionManager);
+        _selectTool = new SelectTool(Viewport, _document, _scene, _scene.SelectionManager);
         _lineTool = new LineTool(_document, _projection, _scene, _snapManager);
         _stlImporter = new StlImporter();
+        _documentFileService = new DocumentFileService(
+            this,
+            _document,
+            _scene.SelectionManager,
+            new GphDocumentSerializer(),
+            CancelTransientToolState,
+            ActivateSelectToolForDocumentCommand);
 
         WireWorkspaceState();
+        _selectTool.SelectionWindowChanged += _selectionWindowOverlay.Update;
         SetActiveTool(_selectTool, "Select tool active");
     }
 
@@ -70,6 +83,31 @@ public partial class MainWindow : Window
     {
         _scene.SelectionManager.SelectionChanged += OnSelectionChanged;
         _viewModel.SetStatusText("Ready");
+        _viewModel.SetSelectedEntity(null);
+    }
+
+    /// <summary>
+    /// Creates a new blank document after optionally saving the current document.
+    /// </summary>
+    private void NewProjectMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        ApplyDocumentFileResult(_documentFileService.New());
+    }
+
+    /// <summary>
+    /// Opens a saved Graphite project file and replaces the current document after confirmation.
+    /// </summary>
+    private void OpenProjectMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        ApplyDocumentFileResult(_documentFileService.Open());
+    }
+
+    /// <summary>
+    /// Saves the current document to a Graphite project file selected by the user.
+    /// </summary>
+    private void SaveProjectMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        ApplyDocumentFileResult(_documentFileService.Save());
     }
 
     /// <summary>
@@ -77,7 +115,14 @@ public partial class MainWindow : Window
     /// </summary>
     private void Viewport_MouseDown(object sender, MouseButtonEventArgs e)
     {
+        if (e.ChangedButton != MouseButton.Left)
+        {
+            return;
+        }
+
         _toolManager.ActiveTool?.OnMouseDown(GetScreenPosition(e));
+        Viewport.CaptureMouse();
+        e.Handled = true;
     }
 
     /// <summary>
@@ -86,6 +131,11 @@ public partial class MainWindow : Window
     private void Viewport_MouseMove(object sender, MouseEventArgs e)
     {
         _toolManager.ActiveTool?.OnMouseMove(GetScreenPosition(e));
+
+        if (e.LeftButton == MouseButtonState.Pressed)
+        {
+            e.Handled = true;
+        }
     }
 
     /// <summary>
@@ -93,19 +143,40 @@ public partial class MainWindow : Window
     /// </summary>
     private void Viewport_MouseUp(object sender, MouseButtonEventArgs e)
     {
+        if (e.ChangedButton != MouseButton.Left)
+        {
+            return;
+        }
+
         _toolManager.ActiveTool?.OnMouseUp(GetScreenPosition(e));
+
+        if (Viewport.IsMouseCaptured)
+        {
+            Viewport.ReleaseMouseCapture();
+        }
+
+        e.Handled = true;
     }
 
+    /// <summary>
+    /// Activates the selection tool from the tool panel.
+    /// </summary>
     private void SelectToolButton_Click(object sender, RoutedEventArgs e)
     {
         SetActiveTool(_selectTool, "Select tool active");
     }
 
+    /// <summary>
+    /// Activates the line creation tool from the tool panel.
+    /// </summary>
     private void LineToolButton_Click(object sender, RoutedEventArgs e)
     {
         SetActiveTool(_lineTool, "Line tool active: click two points");
     }
 
+    /// <summary>
+    /// Imports one STL mesh into the document and lets the scene manager render it incrementally.
+    /// </summary>
     private void ImportStlButton_Click(object sender, RoutedEventArgs e)
     {
         OpenFileDialog dialog = new OpenFileDialog
@@ -138,6 +209,9 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// Handles workspace keyboard shortcuts that cancel transient tool state.
+    /// </summary>
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key != Key.Escape)
@@ -146,15 +220,24 @@ public partial class MainWindow : Window
         }
 
         _lineTool.Cancel();
+        _selectTool.Cancel();
         SetActiveTool(_selectTool, "Select tool active");
         e.Handled = true;
     }
 
+    /// <summary>
+    /// Switches the active interaction tool and updates shell guidance text.
+    /// </summary>
     private void SetActiveTool(ITool tool, string statusText)
     {
         if (!ReferenceEquals(tool, _lineTool))
         {
             _lineTool.Cancel();
+        }
+
+        if (!ReferenceEquals(tool, _selectTool))
+        {
+            _selectTool.Cancel();
         }
 
         _activeToolStatusText = statusText;
@@ -163,6 +246,9 @@ public partial class MainWindow : Window
         _viewModel.SetToolPanelText(statusText);
     }
 
+    /// <summary>
+    /// Converts a WPF mouse event into the float screen coordinate format used by CAD tools.
+    /// </summary>
     private Vector2 GetScreenPosition(MouseEventArgs e)
     {
         Point mousePosition = e.GetPosition(Viewport);
@@ -174,36 +260,93 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnSelectionChanged(IEnumerable<Guid> addedIds, IEnumerable<Guid> removedIds)
     {
-        _selectedEntityCount += CountIds(addedIds);
-        _selectedEntityCount -= CountIds(removedIds);
+        _ = addedIds;
+        _ = removedIds;
 
-        if (_selectedEntityCount < 0)
+        if (_scene.SelectionManager.SelectedCount == 1)
         {
-            _selectedEntityCount = 0;
-        }
+            Guid? selectedId = GetSingleSelectedEntityId();
 
-        if (_selectedEntityCount > 0)
-        {
-            _viewModel.SetStatusText("Object Selected");
+            if (selectedId.HasValue)
+            {
+                _viewModel.SetSelectedEntity(FindEntityById(selectedId.Value));
+            }
+
+            _viewModel.SetStatusText("Object selected");
             return;
         }
 
+        if (_scene.SelectionManager.SelectedCount > 1)
+        {
+            _viewModel.SetMultipleSelection(_scene.SelectionManager.SelectedCount);
+            _viewModel.SetStatusText($"{_scene.SelectionManager.SelectedCount} objects selected");
+            return;
+        }
+
+        _viewModel.SetSelectedEntity(null);
         _viewModel.SetStatusText(_activeToolStatusText);
     }
 
     /// <summary>
-    /// Counts identifiers in an enumerable without relying on LINQ during interactive updates.
+    /// Finds a document entity by id for shell-level selection display.
     /// </summary>
-    private static int CountIds(IEnumerable<Guid> ids)
+    private CadEntity? FindEntityById(Guid id)
     {
-        int count = 0;
-
-        foreach (Guid id in ids)
+        foreach (CadEntity entity in _document.Entities)
         {
-            _ = id;
-            count++;
+            if (entity.Id == id)
+            {
+                return entity;
+            }
         }
 
-        return count;
+        return null;
+    }
+
+    /// <summary>
+    /// Gets the only selected id when selection contains exactly one entity.
+    /// </summary>
+    private Guid? GetSingleSelectedEntityId()
+    {
+        foreach (Guid selectedId in _scene.SelectionManager.SelectedEntityIds)
+        {
+            return selectedId;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Cancels active tool previews before document-level file commands change entities.
+    /// </summary>
+    private void CancelTransientToolState()
+    {
+        _lineTool.Cancel();
+        _selectTool.Cancel();
+    }
+
+    /// <summary>
+    /// Returns the workspace to selection mode after a document-level file command.
+    /// </summary>
+    private void ActivateSelectToolForDocumentCommand()
+    {
+        _viewModel.SetSelectedEntity(null);
+        SetActiveTool(_selectTool, "Select tool active");
+    }
+
+    /// <summary>
+    /// Applies user-facing status updates returned by document file commands.
+    /// </summary>
+    private void ApplyDocumentFileResult(DocumentFileOperationResult result)
+    {
+        if (!string.IsNullOrWhiteSpace(result.StatusText))
+        {
+            _viewModel.SetStatusText(result.StatusText);
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.ToolPanelText))
+        {
+            _viewModel.SetToolPanelText(result.ToolPanelText);
+        }
     }
 }
